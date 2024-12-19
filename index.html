@@ -1,0 +1,166 @@
+<head>
+    <style>
+      /* Centrer le contenu de la page */
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+  
+      /* Conteneur principal pour le formulaire et les résultats */
+      .container {
+        text-align: center;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+      }
+  
+      /* Style pour le formulaire */
+      form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+  
+      label {
+        margin-bottom: 10px;
+        font-size: 16px;
+      }
+  
+      input[type="number"] {
+        padding: 10px;
+        width: 100%;
+        margin-bottom: 20px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+  
+      button {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+  
+      button:hover {
+        background-color: #45a049;
+      }
+  
+      /* Conteneur pour les résultats */
+      #output {
+        margin-top: 20px;
+        font-family: monospace;
+        font-size: 14px;
+        white-space: pre-wrap; /* Permet de conserver les sauts de ligne */
+        color: #333;
+      }
+  
+      /* Conteneur du Captcha */
+      #my-captcha-container {
+        margin-top: 20px;
+      }
+    </style>
+    <script type="text/javascript" src="https://b82b1763d1c3.eu-west-3.captcha-sdk.awswaf.com/b82b1763d1c3/jsapi.js" defer></script>
+    <script type="text/javascript">
+      // Variables globales pour la gestion du captcha
+      let captchaResolved = false;
+  
+      // Fonction de rendu du Captcha
+      function showMyCaptcha() {
+          var container = document.querySelector("#my-captcha-container");
+  
+          AwsWafCaptcha.renderCaptcha(container, {
+              apiKey: window.WAF_API_KEY,
+              onSuccess: captchaResolvedSuccess,
+              onError: captchaResolvedError
+          });
+      }
+  
+      // Fonction qui est appelée lorsque le captcha est résolu avec succès
+      function captchaResolvedSuccess(wafToken) {
+          console.log("Captcha résolu avec succès");
+          captchaResolved = true;
+          startSequence(); // Démarrer la séquence des requêtes après la résolution du captcha
+      }
+  
+      // Fonction en cas d'échec de la résolution du captcha
+      function captchaResolvedError(error) {
+          console.error("Erreur de captcha", error);
+      }
+  
+      // Fonction pour effectuer l'appel GET et afficher "Forbidden"
+      function fetchAndDisplayForbidden(i, n) {
+          fetch("https://api.prod.jcloudify.com/whoami")
+              .then(response => {
+                  if (response.ok) {
+                      document.getElementById('output').innerHTML += `${i}. Forbidden<br>`;
+                  } else {
+                      document.getElementById('output').innerHTML += `${i}. Error (status: ${response.status})<br>`;
+                  }
+              })
+              .catch(error => {
+                  console.error(error);
+                  document.getElementById('output').innerHTML += `${i}. Network Error<br>`;
+              });
+  
+          // Si il reste encore des requêtes à faire, on attend 1 seconde avant de faire la suivante
+          if (i < n) {
+              setTimeout(() => fetchAndDisplayForbidden(i + 1, n), 1000);
+          }
+      }
+  
+      // Fonction pour commencer la séquence après la soumission du formulaire ou résolution du captcha
+      function startSequence() {
+          const n = parseInt(document.getElementById("numberInput").value);
+  
+          // Vérifier que le nombre est valide (entre 1 et 1000)
+          if (n >= 1 && n <= 1000) {
+              document.getElementById('output').innerHTML = ""; // Réinitialiser l'affichage
+              fetchAndDisplayForbidden(1, n); // Lancer les requêtes
+          } else {
+              alert("Veuillez entrer un nombre entre 1 et 1000.");
+          }
+      }
+  
+      // Fonction appelée lors de la soumission du formulaire
+      function submitForm(event) {
+          event.preventDefault(); // Empêche le rechargement de la page
+  
+          // Si captcha n'est pas encore résolu, afficher le captcha
+          if (!captchaResolved) {
+              showMyCaptcha();
+          } else {
+              startSequence(); // Si le captcha est déjà résolu, commencer la séquence directement
+          }
+      }
+    </script>
+  </head>
+  
+  <body>
+    <div class="container">
+      <!-- Formulaire pour l'utilisateur -->
+      <form id="captchaForm" onsubmit="submitForm(event)">
+        <label for="numberInput">Entrez un nombre N entre 1 et 1000 :</label>
+        <input type="number" id="numberInput" min="1" max="1000" required>
+        <button type="submit">Soumettre</button>
+      </form>
+  
+      <!-- Conteneur pour afficher les résultats -->
+      <div id="output"></div>
+  
+      <!-- Conteneur pour afficher le Captcha AWS -->
+      <div id="my-captcha-container"></div>
+    </div>
+  </body>
+  
